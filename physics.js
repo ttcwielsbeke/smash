@@ -26,9 +26,11 @@ const P = {
                        // hoe sneller de bal erdoor valt, hoe korter het venster
   falloff: 0.22,       // hoe snel een slag slapper wordt naast dat venster (speltijd)
 
-  fireTime: 2.4,
+  fireTime: 2.4,       // zo lang snijdt een ULTRA SMASH door de lucht (minder weerstand)
+  fireAfterLand: 1.5,  // de bal brandt de hele vlucht, en nog zo lang na de eerste keer de grond raken
   tableTop: 0.76, tableLen: 2.74, netH: 0.1525,
-  boardH: 0.7, catchH: 3.4, playerH: 2.1, robotH: 1.5
+  boardH: 0.7, playerH: 2.1, robotH: 1.5,
+  catchH: 2.2         // vangnet: lager dan vroeger (3,4 m), anders ving het elke bal
 };
 
 /* een willekeurige opgooisnelheid voor de volgende opslag */
@@ -63,9 +65,13 @@ function daySeed(d){
 }
 
 /* ---------- de zaal, en alles wat erachter ligt ---------- */
+/* Hoe vaak elk obstakel voorkomt. Afgesteld zodat een bal ongeveer even
+   vaak een boost raakt als iets dat afremt (gemeten over een jaar aan
+   zalen): tafels liggen er veel, maar zijn moeilijk te raken; afschermingen
+   vangen elke rollende bal, en zijn daarom zeldzamer. */
 const MIX = [
-  ['table', 0.34], ['mate', 0.15], ['opp', 0.18],
-  ['board', 0.14], ['net', 0.14], ['robot', 0.05]
+  ['table', 0.38], ['mate', 0.22], ['robot', 0.06],   // boosts
+  ['opp',   0.15], ['board', 0.08], ['net',  0.11]    // remmers
 ];
 
 function buildWorld(seed){
@@ -107,7 +113,8 @@ function launch(e, tv){
 function newBall(shot){
   return {
     x: 0.55, y: P.hitY, vx: shot.vx, vy: shot.vy,
-    fire: shot.perfect ? P.fireTime : 0,
+    fire: shot.perfect ? Infinity : 0,   // tot de eerste keer de grond, zie landFire
+    t: 0,
     rolling: false, done: false, blown: false, top: P.hitY
   };
 }
@@ -142,12 +149,13 @@ function sub(b, h, world, ev){
     b.x += b.vx * h;
   } else {
     const sp = Math.hypot(b.vx, b.vy);
-    const k = b.fire > 0 ? P.fireDrag : P.drag;
+    const k = b.fire > 0 && b.t < P.fireTime ? P.fireDrag : P.drag;
     b.vx -= k * sp * b.vx * h;
     b.vy -= (P.g + k * sp * b.vy) * h;
     b.x += b.vx * h;
     b.y += b.vy * h;
   }
+  b.t += h;
   if (b.fire > 0) b.fire -= h;
   if (b.y > b.top) b.top = b.y;
 
@@ -160,6 +168,7 @@ function sub(b, h, world, ev){
   if (!b.rolling && b.y < P.r){
     b.y = P.r;
     if (b.vy < 0){
+      landFire(b);
       if (-b.vy < P.rollBelow){
         b.rolling = true; b.vy = 0;
       } else {
@@ -169,6 +178,13 @@ function sub(b, h, world, ev){
       }
     }
   }
+}
+
+/* het vuur dooft niet in de lucht: pas vanaf de eerste keer de grond
+   loopt de klok, zodat een ULTRA SMASH na de landing nog door een
+   noppenspeler of een vangnet kan branden */
+function landFire(b){
+  if (b.fire > P.fireAfterLand) b.fire = P.fireAfterLand;
 }
 
 /* hoogte van de bal op het moment dat hij x = xw passeert, of null */
