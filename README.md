@@ -39,6 +39,9 @@ node -e "const S=require('./physics.js'); const b=S.newBall(S.launch(0)); const 
 ## Erelijst
 
 Na vijf opslagen zet je je naam bij je totaal. Per naam blijft enkel het beste totaal staan.
+De erelijst toont eerst **vandaag**: iedereen speelt die dag dezelfde zaal, dus dat is de
+eerlijke ranglijst, en om middernacht begint ze opnieuw. Onder **aller tijden** staat het
+beste totaal ooit.
 De lijst draait op hetzelfde Supabase-project als PIPS OUT!, in een eigen tabel. Zolang die
 tabel niet bestaat of de verbinding wegvalt, bewaart het spel de afstanden op het toestel zelf.
 
@@ -73,7 +76,7 @@ create policy "afstand toevoegen"
   );
 ```
 
-`day` is de zaal van die dag (`20261008`), zodat er later een dagranking bij kan.
+`day` is de zaal van die dag (`20261008`); de dagranking filtert daarop.
 Sleutels en tabelnaam staan in `config.js`; de bovengrens van 10000 m (vijf keer 2000) is dezelfde als in `board.js`.
 
 ## Lokaal draaien

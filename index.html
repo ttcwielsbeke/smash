@@ -26,6 +26,13 @@
   .hud-label{ font-size:6px; color:#9ed4ff; flex:0 0 auto; }
   #stage{ background:#0e3a6d; }
   #game{ cursor:pointer; }
+  .tabs{ display:flex; gap:6px; }
+  .tab{
+    font-family:var(--px); font-size:8px; padding:8px 12px; cursor:pointer;
+    color:#9ed4ff; background:rgba(6,32,63,.8);
+    border:2px solid #27527f; border-radius:8px;
+  }
+  .tab.on{ color:#02132b; background:var(--gold); border-color:#fff3b0; }
   .logo.smash{ color:#fff; text-shadow:3px 3px 0 #8d1519, -1px -1px 0 #ffd23f, 0 0 22px rgba(255,140,40,.8); }
   .logo.smash span{ color:#ff8a1f; text-shadow:3px 3px 0 #6b2a00, 0 0 22px rgba(255,120,30,.8); font-size:1.15em; }
 </style>
@@ -106,6 +113,10 @@
     <!-- ---- ERELIJST ---- -->
     <div class="overlay hidden" id="screen-board">
       <h2 class="ov-title">ERELIJST</h2>
+      <div class="tabs" role="tablist">
+        <button class="tab on" id="tabDay" role="tab" aria-selected="true">Vandaag</button>
+        <button class="tab" id="tabAll" role="tab" aria-selected="false">Aller tijden</button>
+      </div>
       <ol class="board" id="boardList"></ol>
       <p class="fineprint" id="boardNote"></p>
       <button class="btn" id="btnBoardBack">Terug</button>

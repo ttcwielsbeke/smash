@@ -70,9 +70,13 @@ const rest = {
       'Content-Type': 'application/json'
     }, extra || {});
   },
-  async top(){
+  /* day = een zaal (20261011) voor de dagranking, of niets voor aller tijden.
+     Ruim ophalen: wie veel speelt, staat er tientallen keren in, en per
+     naam blijft er maar één over. */
+  async top(day){
     const r = await fetch(
-      this.url('?select=name,distance,day,ts&order=distance.desc&limit=' + (LIMIT * 4)),
+      this.url('?select=name,distance,day,ts' + (day ? '&day=eq.' + day : '') +
+               '&order=distance.desc&limit=1000'),
       { headers: this.head() }
     );
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -95,16 +99,18 @@ return {
 
   /* {rows, remote, offline} — offline: de gedeelde lijst was niet
      bereikbaar, dit is wat er op dit toestel staat. */
-  async top(){
-    if (!useRemote) return { rows: bestPerName(readLocal()), remote: false, offline: false };
+  async top(day){
+    const local = () => bestPerName(readLocal().filter(r => !day || r.day === day));
+    if (!useRemote) return { rows: local(), remote: false, offline: false };
     try {
-      return { rows: await rest.top(), remote: true, offline: false };
+      return { rows: await rest.top(day), remote: true, offline: false };
     } catch (_){
-      return { rows: bestPerName(readLocal()), remote: true, offline: true };
+      return { rows: local(), remote: true, offline: true };
     }
   },
 
-  /* {entry, rank, offline} of null als de afstand niet kan kloppen. */
+  /* {entry, rank, offline} of null als de afstand niet kan kloppen.
+     rank is je plaats in de dagranking van die zaal. */
   async submit(name, distance, day){
     const e = {
       name: cleanName(name) || 'Anoniem',
@@ -117,12 +123,12 @@ return {
     addLocal(e);                       // altijd, ook als het versturen mislukt
 
     if (!useRemote){
-      const rank = bestPerName(readLocal()).findIndex(r => r.ts === e.ts) + 1;
+      const rank = bestPerName(readLocal().filter(r => r.day === day)).findIndex(r => r.ts === e.ts) + 1;
       return { entry: e, rank, offline: false };
     }
     try {
       await rest.insert(e);
-      const rows = await rest.top();
+      const rows = await rest.top(day);
       return { entry: e, rank: rows.findIndex(r => r.ts === e.ts) + 1, offline: false };
     } catch (_){
       return { entry: e, rank: 0, offline: true };

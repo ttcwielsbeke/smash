@@ -24,6 +24,7 @@ const el = {
   finalDist: $('finalDist'), overQuip: $('overQuip'), overSplits: $('overSplits'),
   bestTitle: $('bestTitle'), bestOver: $('bestOver'),
   board: $('screen-board'), boardList: $('boardList'), boardNote: $('boardNote'),
+  tabDay: $('tabDay'), tabAll: $('tabAll'),
   submitRow: $('submitRow'), submitDone: $('submitDone'), playerName: $('playerName'),
   tickText: $('tickText'), mute: $('mute')
 };
@@ -327,7 +328,13 @@ function afterLanding(){
 /* ============================================================
    ERELIJST
    ============================================================ */
-let boardFrom = 'title', boardToken = 0;
+let boardFrom = 'title', boardToken = 0, boardMode = 'day';   // day | all
+
+/* 20261011 -> 'zondag 11 oktober' */
+function dayName(seed){
+  const d = new Date(Math.floor(seed / 10000), Math.floor(seed / 100) % 100 - 1, seed % 100);
+  return d.toLocaleDateString('nl-BE', { weekday: 'long', day: 'numeric', month: 'long' });
+}
 
 function boardRow(cls, cells){
   const li = document.createElement('li');
@@ -348,12 +355,22 @@ async function renderBoard(mineTs){
   list.appendChild(boardRow('leeg', [['', 'Laden…']]));
   el.boardNote.textContent = '';
 
-  const res = await SmashBoard.top();
+  // een gsm kan na een update nog even de oude pagina in zijn cache hebben,
+  // zonder tabbladen: dan gewoon de dagranking tonen
+  if (el.tabDay && el.tabAll){
+    el.tabDay.classList.toggle('on', boardMode === 'day');
+    el.tabAll.classList.toggle('on', boardMode === 'all');
+    el.tabDay.setAttribute('aria-selected', boardMode === 'day');
+    el.tabAll.setAttribute('aria-selected', boardMode === 'all');
+  }
+
+  const res = await SmashBoard.top(boardMode === 'day' ? G.seed : null);
   if (mine !== boardToken) return;    // ondertussen opnieuw geopend
 
   list.textContent = '';
   if (!res.rows.length){
-    list.appendChild(boardRow('leeg', [['', 'Nog niemand. Sla de eerste bal.']]));
+    list.appendChild(boardRow('leeg', [['', boardMode === 'day'
+      ? 'Vandaag nog niemand. Sla de eerste bal.' : 'Nog niemand. Sla de eerste bal.']]));
   } else {
     res.rows.forEach((r, i) => {
       list.appendChild(boardRow(mineTs && r.ts === mineTs ? 'me' : '', [
@@ -363,10 +380,13 @@ async function renderBoard(mineTs){
       ]));
     });
   }
+  const what = boardMode === 'day'
+    ? 'De zaal van ' + dayName(G.seed) + '. Om middernacht staat er een nieuwe zaal en begint alles opnieuw.'
+    : 'Het beste totaal ooit, per speler. Elke dag een andere zaal, dus niet altijd eerlijk.';
   el.boardNote.textContent =
     res.offline ? 'Geen verbinding met de clubranking. Dit is de lijst op dit toestel.'
-    : res.remote ? 'Het beste totaal van vijf opslagen, per speler in de club.'
-    : res.rows.length ? 'Deze lijst staat op dit toestel.'
+    : res.remote ? what
+    : res.rows.length ? 'Deze lijst staat op dit toestel. ' + what
     : 'Speel vijf opslagen en zet je naam erbij.';
 
   const me = list.querySelector('.me');
@@ -375,6 +395,7 @@ async function renderBoard(mineTs){
 
 function showBoard(from, mineTs){
   boardFrom = from;
+  boardMode = 'day';
   show('board');
   renderBoard(mineTs);
 }
@@ -1101,6 +1122,8 @@ $('btnHow').onclick   = () => show('how');
 $('btnBack').onclick  = () => show('title');
 $('btnBoard').onclick     = () => showBoard('title');
 $('btnBoardOver').onclick = () => showBoard('over');
+if (el.tabDay) el.tabDay.onclick = () => { boardMode = 'day'; renderBoard(); };
+if (el.tabAll) el.tabAll.onclick = () => { boardMode = 'all'; renderBoard(); };
 $('btnBoardBack').onclick = () => show(boardFrom);
 
 el.submitRow.addEventListener('submit', async e => {
@@ -1122,7 +1145,7 @@ el.submitRow.addEventListener('submit', async e => {
   el.submitDone.classList.remove('hidden');
   el.submitDone.textContent =
     res.offline ? 'Geen verbinding. Bewaard op dit toestel, de club ziet ze nog niet.'
-    : res.rank  ? 'Genoteerd als ' + res.entry.name + ' — plaats ' + res.rank + '.'
+    : res.rank  ? 'Genoteerd als ' + res.entry.name + ' — plaats ' + res.rank + ' vandaag.'
                 : 'Genoteerd als ' + res.entry.name + '.';
   Snd.land();
   setTimeout(() => showBoard('over', res.entry.ts), 750);
